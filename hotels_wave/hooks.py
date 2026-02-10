@@ -43,7 +43,7 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Customer": "public/js/customer.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -137,34 +137,27 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sales Invoice": {
+		"on_update": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_invoice_status",
+		"on_submit": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_invoice_status",
+		"on_cancel": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_invoice_status",
+		"on_update_after_submit": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_invoice_status",
+	},
+	"Payment Entry": {
+		"on_submit": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_on_payment",
+		"on_cancel": "hotels_wave.hotels_wave.doctype.financial_settlement.financial_settlement.update_settlement_on_payment",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"hotels_wave.tasks.all"
-# 	],
-# 	"daily": [
-# 		"hotels_wave.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"hotels_wave.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"hotels_wave.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"hotels_wave.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"hourly": [
+		"hotels_wave.hotels_wave.doctype.booking_intake.booking_intake.auto_confirm_bookings"
+	],
+}
 
 # Testing
 # -------
@@ -242,3 +235,32 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": {
+            "name": [
+                "in",
+                [
+                    "Customer-custom_is_hotel_entity",
+                    "Customer-custom_management_company",
+                    "Customer-custom_hotel",
+                    "Customer-custom_hotel_name",
+                    "Customer-custom_location",
+                    "Customer-custom_city",
+                    "Customer-custom_column_break_1",
+                    "Customer-custom_section_break_contract",
+                    "Customer-custom_contract_start",
+                    "Customer-custom_contract_end",
+                    "Customer-custom_column_break_2",
+                    "Customer-custom_base_commission",
+                    "Customer-custom_hotel_status",
+                    "Customer-custom_hotel_type",
+
+                    "Contract-custom_commission_calculation_method",
+                    "Contract-custom_service_scope"
+                ],
+            ]
+        }
+    }
+]

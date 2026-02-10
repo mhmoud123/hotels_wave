@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-01-01 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "booking_ref",
+  "booking_ota",
+  "external_id",
+  "gross_amount",
+  "applied_commission_rate",
+  "commission_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "booking_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Booking Reference",
+   "options": "Booking Intake"
+  },
+  {
+   "fieldname": "gross_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Gross Amount"
+  },
+  {
+   "fieldname": "applied_commission_rate",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Applied Commission Rate"
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Commission Amount"
+  },
+  {
+   "fieldname": "booking_ota",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Booking OTA",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "booking_ref.external_id",
+   "fieldname": "external_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "External ID"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-10 10:58:45.758039",
+ "modified_by": "Administrator",
+ "module": "Hotels Wave",
+ "name": "Settlement Booking Detail",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

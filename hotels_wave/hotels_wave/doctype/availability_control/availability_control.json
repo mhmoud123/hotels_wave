@@ -1,0 +1,42 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "creation": "2026-02-05 00:39:31.157419",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "unit_type",
+        "allocated_units"
+    ],
+    "fields": [
+        {
+            "fieldname": "unit_type",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Unit Type",
+            "options": "Unit Type"
+        },
+        {
+            "fieldname": "allocated_units",
+            "fieldtype": "Int",
+            "in_list_view": 1,
+            "label": "Allocated Units",
+            "non_negative": 1
+        }
+    ],
+    "grid_page_length": 50,
+    "index_web_pages_for_search": 1,
+    "istable": 1,
+    "links": [],
+    "modified": "2026-02-05 00:40:40.546953",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Availability Control",
+    "owner": "Administrator",
+    "permissions": [],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
+}
