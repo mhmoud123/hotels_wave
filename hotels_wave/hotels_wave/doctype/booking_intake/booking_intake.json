@@ -110,7 +110,7 @@
             "in_list_view": 1,
             "in_standard_filter": 1,
             "label": "Booking Status",
-            "options": "Open\nConfirmed\nCancelled"
+            "options": "Open\nConfirmed\nCancelled\nNo Show"
         },
         {
             "fieldname": "amended_from",
