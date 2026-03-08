@@ -23,6 +23,13 @@ def get_columns():
 			"width": 180,
 		},
 		{
+			"fieldname": "unit_type",
+			"label": _("Unit Type"),
+			"fieldtype": "Link",
+			"options": "Unit Type",
+			"width": 130,
+		},
+		{
 			"fieldname": "total_bookings",
 			"label": _("Total Bookings"),
 			"fieldtype": "Int",
@@ -52,70 +59,90 @@ def get_columns():
 def get_data(filters):
 	conditions = get_conditions(filters)
 
-	result = []
-	hotel_map = {}
-
-	# Fetch individual confirmed bookings to calculate nights and aggregate
-	individual_bookings = frappe.db.sql(
+	# Fetch confirmed bookings with their availability_control child rows
+	bookings = frappe.db.sql(
 		f"""
 		SELECT
-			hotel,
-			total_value,
-			check_in,
-			check_out
-		FROM `tabBooking Intake`
-		WHERE booking_status = 'Confirmed' {conditions}
+			bi.name,
+			bi.hotel,
+			bi.total_value,
+			bi.check_in,
+			bi.check_out,
+			ac.unit_type,
+			ac.allocated_units
+		FROM `tabBooking Intake` bi
+		LEFT JOIN `tabAvailability Control` ac ON ac.parent = bi.name
+		WHERE bi.booking_status = 'Confirmed' {conditions}
+		ORDER BY bi.hotel, ac.unit_type
 		""",
 		filters,
 		as_dict=True,
 	)
 
-	for booking in individual_bookings:
-		key = booking.hotel
-		if key not in hotel_map:
-			hotel_map[key] = {
-				"hotel": booking.hotel,
+	group_map = {}
+
+	for row in bookings:
+		unit_type = row.unit_type or "—"
+		key = (row.hotel, unit_type)
+
+		if key not in group_map:
+			group_map[key] = {
+				"hotel": row.hotel,
+				"unit_type": unit_type,
 				"total_bookings": 0,
 				"total_nights": 0,
 				"total_revenue": 0,
+				"_seen_bookings": set(),
 			}
 
-		hotel_map[key]["total_bookings"] += 1
-		hotel_map[key]["total_revenue"] += flt(booking.total_value)
+		grp = group_map[key]
 
-		# Calculate nights
-		if booking.check_in and booking.check_out:
-			nights = date_diff(booking.check_out, booking.check_in)
-			hotel_map[key]["total_nights"] += nights if nights > 0 else 1
+		# Count each booking only once per group
+		if row.name not in grp["_seen_bookings"]:
+			grp["_seen_bookings"].add(row.name)
+			grp["total_bookings"] += 1
 
-	# Calculate ADR for each group
-	for key, row in hotel_map.items():
-		if row["total_nights"] > 0:
-			row["adr"] = flt(row["total_revenue"]) / row["total_nights"]
+		nights = 1
+		if row.check_in and row.check_out:
+			nights = max(1, date_diff(row.check_out, row.check_in))
+
+		units = row.allocated_units or 1
+		grp["total_nights"] += nights * units
+		grp["total_revenue"] += flt(row.total_value) * units / max(1, _count_unit_rows(row.name, bookings))
+
+	# Calculate ADR and build result
+	result = []
+	for key, grp in group_map.items():
+		grp.pop("_seen_bookings", None)
+		if grp["total_nights"] > 0:
+			grp["adr"] = flt(grp["total_revenue"]) / grp["total_nights"]
 		else:
-			row["adr"] = 0
-		result.append(row)
+			grp["adr"] = 0
+		result.append(grp)
 
-	# Sort by hotel
-	result.sort(key=lambda x: (x["hotel"] or ""))
-
+	result.sort(key=lambda x: (x["hotel"] or "", x["unit_type"] or ""))
 	return result
+
+
+def _count_unit_rows(booking_name, bookings):
+	"""Count how many availability_control rows belong to a given booking."""
+	return sum(1 for b in bookings if b.name == booking_name)
 
 
 def get_conditions(filters):
 	conditions = ""
 
 	if filters.get("hotel"):
-		conditions += " AND hotel = %(hotel)s"
+		conditions += " AND bi.hotel = %(hotel)s"
 
 	if filters.get("ota_source"):
-		conditions += " AND ota_source = %(ota_source)s"
+		conditions += " AND bi.ota_source = %(ota_source)s"
 
 	if filters.get("from_date"):
-		conditions += " AND check_in >= %(from_date)s"
+		conditions += " AND bi.check_in >= %(from_date)s"
 
 	if filters.get("to_date"):
-		conditions += " AND check_out <= %(to_date)s"
+		conditions += " AND bi.check_out <= %(to_date)s"
 
 	return conditions
 
@@ -125,7 +152,7 @@ def get_chart(data):
 	if not data:
 		return None
 
-	# Aggregate revenue by hotel
+	# Aggregate revenue by hotel for chart
 	hotel_revenue = {}
 	for row in data:
 		hotel = row.get("hotel") or "Unknown"

@@ -1,0 +1,65 @@
+{
+    "add_total_row": 0,
+    "columns": [],
+    "creation": "2026-02-21 00:00:00",
+    "disabled": 0,
+    "doctype": "Report",
+    "filters": [
+        {
+            "fieldname": "hotel",
+            "label": "Hotel",
+            "fieldtype": "Link",
+            "options": "Customer",
+            "reqd": 1
+        },
+        {
+            "fieldname": "from_date",
+            "label": "From Date",
+            "fieldtype": "Date",
+            "default": "Today",
+            "reqd": 1
+        },
+        {
+            "fieldname": "to_date",
+            "label": "To Date",
+            "fieldtype": "Date",
+            "default": "Today",
+            "reqd": 1
+        },
+        {
+            "fieldname": "unit_type",
+            "label": "Unit Type",
+            "fieldtype": "Link",
+            "options": "Unit Type"
+        },
+        {
+            "fieldname": "ota_source",
+            "label": "OTA Source",
+            "fieldtype": "Link",
+            "options": "OTA Account Setup"
+        },
+        {
+            "fieldname": "pricing_plan",
+            "label": "Pricing Plan",
+            "fieldtype": "Link",
+            "options": "Pricing Plan"
+        },
+        {
+            "fieldname": "customer_segment",
+            "label": "Customer Segment",
+            "fieldtype": "Select",
+            "options": "\nB2C\nB2B\nGroup\nGovernment"
+        }
+    ],
+    "idx": 0,
+    "is_standard": "Yes",
+    "modified": "2026-02-21 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Dynamic Pricing Dashboard",
+    "owner": "Administrator",
+    "ref_doctype": "Booking Intake",
+    "report_name": "Dynamic Pricing Dashboard",
+    "report_type": "Script Report",
+    "roles": [{"role": "System Manager"}]
+}

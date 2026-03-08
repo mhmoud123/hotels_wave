@@ -13,7 +13,11 @@
         "ota_id",
         "column_break_1",
         "connection_type",
-        "platform_commission"
+        "platform_commission",
+        "channel_discount_pct",
+        "channel_type",
+        "no_show_rate_weekday",
+        "no_show_rate_weekend"
     ],
     "fields": [
         {
@@ -64,6 +68,28 @@
             "in_list_view": 1,
             "label": "Platform Commission",
             "reqd": 1
+        },
+        {
+            "fieldname": "channel_discount_pct",
+            "fieldtype": "Percent",
+            "label": "Channel Discount %"
+        },
+        {
+            "fieldname": "channel_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Channel Type",
+            "options": "OTA\nDirect\nB2B\nWhatsApp"
+        },
+        {
+            "fieldname": "no_show_rate_weekday",
+            "fieldtype": "Percent",
+            "label": "No-Show Rate (Weekday)"
+        },
+        {
+            "fieldname": "no_show_rate_weekend",
+            "fieldtype": "Percent",
+            "label": "No-Show Rate (Weekend)"
         }
     ],
     "index_web_pages_for_search": 1,

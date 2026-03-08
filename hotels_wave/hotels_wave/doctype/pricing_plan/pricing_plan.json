@@ -1,0 +1,60 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "field:plan_name",
+    "creation": "2026-02-21 00:00:00",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "plan_name",
+        "discount_pct",
+        "is_refundable",
+        "min_stay_nights",
+        "description"
+    ],
+    "fields": [
+        {
+            "fieldname": "plan_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Plan Name",
+            "reqd": 1
+        },
+        {
+            "fieldname": "discount_pct",
+            "fieldtype": "Percent",
+            "in_list_view": 1,
+            "label": "Discount %"
+        },
+        {
+            "fieldname": "is_refundable",
+            "fieldtype": "Check",
+            "in_list_view": 1,
+            "label": "Is Refundable"
+        },
+        {
+            "fieldname": "min_stay_nights",
+            "fieldtype": "Int",
+            "label": "Min Stay Nights"
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Small Text",
+            "label": "Description"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-02-21 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Pricing Plan",
+    "naming_rule": "By fieldname",
+    "owner": "Administrator",
+    "permissions": [{"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
+}

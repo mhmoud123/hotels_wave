@@ -25,6 +25,16 @@
         "total_value",
         "booking_status",
         "amended_from",
+        "section_break_pricing",
+        "customer_segment",
+        "pricing_plan",
+        "column_break_pricing",
+        "lead_time_days",
+        "length_of_stay_nights",
+        "computed_base_price",
+        "applied_price_factor",
+        "suggested_price",
+        "price_override_reason",
         "section_break_availability",
         "availability_control"
     ],
@@ -145,6 +155,62 @@
             "fieldname": "email",
             "fieldtype": "Data",
             "label": "Email"
+        },
+        {
+            "fieldname": "section_break_pricing",
+            "fieldtype": "Section Break",
+            "label": "Pricing Details"
+        },
+        {
+            "fieldname": "customer_segment",
+            "fieldtype": "Select",
+            "label": "Customer Segment",
+            "options": "\nB2C\nB2B\nGroup\nGovernment"
+        },
+        {
+            "fieldname": "pricing_plan",
+            "fieldtype": "Link",
+            "label": "Pricing Plan",
+            "options": "Pricing Plan"
+        },
+        {
+            "fieldname": "column_break_pricing",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "lead_time_days",
+            "fieldtype": "Int",
+            "label": "Lead Time (Days)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "length_of_stay_nights",
+            "fieldtype": "Int",
+            "label": "Length of Stay (Nights)",
+            "read_only": 1
+        },
+        {
+            "fieldname": "computed_base_price",
+            "fieldtype": "Currency",
+            "label": "Computed Base Price",
+            "read_only": 1
+        },
+        {
+            "fieldname": "applied_price_factor",
+            "fieldtype": "Float",
+            "label": "Applied Price Factor",
+            "read_only": 1
+        },
+        {
+            "fieldname": "suggested_price",
+            "fieldtype": "Currency",
+            "label": "Suggested Price",
+            "read_only": 1
+        },
+        {
+            "fieldname": "price_override_reason",
+            "fieldtype": "Small Text",
+            "label": "Price Override Reason"
         },
         {
             "fieldname": "section_break_availability",

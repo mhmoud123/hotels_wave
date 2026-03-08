@@ -15,6 +15,8 @@
         "end_date",
         "section_break_commission",
         "seasonal_commission",
+        "season_factor",
+        "season_name_label",
         "section_break_oviu",
         "season_unit_rates",
         "availability_control"
@@ -73,6 +75,17 @@
             "fieldname": "seasonal_commission",
             "fieldtype": "Percent",
             "label": "Seasonal Commission"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "season_factor",
+            "fieldtype": "Float",
+            "label": "Season Factor"
+        },
+        {
+            "fieldname": "season_name_label",
+            "fieldtype": "Data",
+            "label": "Season Name Label"
         },
         {
             "fieldname": "section_break_oviu",

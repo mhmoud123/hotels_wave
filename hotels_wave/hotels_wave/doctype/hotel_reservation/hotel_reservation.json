@@ -1,0 +1,191 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "naming_series:",
+    "creation": "2026-03-08 00:00:00",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "naming_series",
+        "hotel",
+        "hotel_name",
+        "unit_type",
+        "column_break_1",
+        "status",
+        "check_in_status",
+        "booking_source",
+        "rental_type",
+        "section_break_dates",
+        "check_in",
+        "check_out",
+        "column_break_dates",
+        "number_of_rooms",
+        "section_break_guest",
+        "guest_name",
+        "column_break_guest",
+        "notes",
+        "section_break_link",
+        "booking_intake"
+    ],
+    "fields": [
+        {
+            "fieldname": "naming_series",
+            "fieldtype": "Select",
+            "label": "Series",
+            "options": "HR-.YYYY.-.#####"
+        },
+        {
+            "fieldname": "hotel",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Hotel",
+            "link_filters": "[[\"Customer\", \"custom_is_hotel_entity\", \"=\", 1]]",
+            "options": "Customer",
+            "reqd": 1
+        },
+        {
+            "fetch_from": "hotel.custom_hotel_name",
+            "fieldname": "hotel_name",
+            "fieldtype": "Data",
+            "label": "Hotel Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "unit_type",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Room Type",
+            "options": "Unit Type",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_1",
+            "fieldtype": "Column Break"
+        },
+        {
+            "default": "\u0645\u0624\u0643\u062f",
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Status",
+            "options": "\u0645\u0624\u0643\u062f\n\u0645\u0644\u063a\u064a",
+            "reqd": 1
+        },
+        {
+            "fieldname": "check_in_status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Check-in Status",
+            "options": "\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644\n\u0644\u0645 \u064a\u0635\u0644\nNo Show"
+        },
+        {
+            "default": "\u0627\u0633\u062a\u0642\u0628\u0627\u0644",
+            "fieldname": "booking_source",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Booking Source",
+            "options": "Booking\nExpedia\n\u0627\u0633\u062a\u0642\u0628\u0627\u0644\n\u0627\u062e\u0631\u0649\n\u0648\u0627\u062a\u0633\u0627\u0628"
+        },
+        {
+            "default": "\u064a\u0648\u0645\u064a",
+            "fieldname": "rental_type",
+            "fieldtype": "Select",
+            "label": "Rental Type",
+            "options": "\u064a\u0648\u0645\u064a\n\u0634\u0647\u0631\u064a"
+        },
+        {
+            "fieldname": "section_break_dates",
+            "fieldtype": "Section Break",
+            "label": "Stay Details"
+        },
+        {
+            "fieldname": "check_in",
+            "fieldtype": "Date",
+            "in_list_view": 1,
+            "label": "Check In",
+            "reqd": 1
+        },
+        {
+            "fieldname": "check_out",
+            "fieldtype": "Date",
+            "in_list_view": 1,
+            "label": "Check Out",
+            "reqd": 1
+        },
+        {
+            "fieldname": "column_break_dates",
+            "fieldtype": "Column Break"
+        },
+        {
+            "default": 1,
+            "fieldname": "number_of_rooms",
+            "fieldtype": "Int",
+            "in_list_view": 1,
+            "label": "Number of Rooms",
+            "reqd": 1
+        },
+        {
+            "fieldname": "section_break_guest",
+            "fieldtype": "Section Break",
+            "label": "Guest Info"
+        },
+        {
+            "fieldname": "guest_name",
+            "fieldtype": "Data",
+            "label": "Guest Name"
+        },
+        {
+            "fieldname": "column_break_guest",
+            "fieldtype": "Column Break"
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Small Text",
+            "label": "Notes"
+        },
+        {
+            "fieldname": "section_break_link",
+            "fieldtype": "Section Break",
+            "label": "Linked Booking"
+        },
+        {
+            "fieldname": "booking_intake",
+            "fieldtype": "Link",
+            "label": "Booking Intake",
+            "options": "Booking Intake"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-03-08 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Hotel Reservation",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "quick_entry": 1,
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [],
+    "track_changes": 1
+}

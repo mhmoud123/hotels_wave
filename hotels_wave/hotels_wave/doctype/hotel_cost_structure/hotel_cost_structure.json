@@ -1,0 +1,60 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "format:{hotel}-Costs",
+    "creation": "2026-02-21 00:00:00",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "hotel",
+        "hotel_name",
+        "effective_date",
+        "cost_items"
+    ],
+    "fields": [
+        {
+            "fieldname": "hotel",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Hotel",
+            "link_filters": "[[\"Customer\", \"custom_is_hotel_entity\", \"=\", 1]]",
+            "options": "Customer",
+            "reqd": 1
+        },
+        {
+            "fetch_from": "hotel.custom_hotel_name",
+            "fieldname": "hotel_name",
+            "fieldtype": "Data",
+            "label": "Hotel Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "effective_date",
+            "fieldtype": "Date",
+            "in_list_view": 1,
+            "label": "Effective Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "cost_items",
+            "fieldtype": "Table",
+            "label": "Cost Items",
+            "options": "Hotel Cost Item"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-02-21 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Hotel Cost Structure",
+    "naming_rule": "Expression",
+    "owner": "Administrator",
+    "permissions": [{"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
+}

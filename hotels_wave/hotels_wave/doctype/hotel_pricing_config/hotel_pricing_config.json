@@ -1,0 +1,169 @@
+{
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "format:{hotel}-Pricing",
+    "creation": "2026-02-21 00:00:00",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "hotel",
+        "hotel_name",
+        "is_active",
+        "section_break_financial",
+        "target_monthly_profit",
+        "min_profit_per_night",
+        "min_margin_pct",
+        "section_break_weights",
+        "w_occupancy",
+        "w_seasonality",
+        "w_day_of_week",
+        "column_break_weights",
+        "w_lead_time",
+        "w_customer_segment",
+        "w_length_of_stay",
+        "w_rooms_volume",
+        "section_break_overbooking",
+        "lock_threshold_pct",
+        "safety_buffer_rate",
+        "section_break_room_types",
+        "room_type_pricing"
+    ],
+    "fields": [
+        {
+            "fieldname": "hotel",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "label": "Hotel",
+            "link_filters": "[[\"Customer\", \"custom_is_hotel_entity\", \"=\", 1]]",
+            "options": "Customer",
+            "reqd": 1
+        },
+        {
+            "fetch_from": "hotel.custom_hotel_name",
+            "fieldname": "hotel_name",
+            "fieldtype": "Data",
+            "label": "Hotel Name",
+            "read_only": 1
+        },
+        {
+            "default": "1",
+            "fieldname": "is_active",
+            "fieldtype": "Check",
+            "label": "Is Active"
+        },
+        {
+            "fieldname": "section_break_financial",
+            "fieldtype": "Section Break",
+            "label": "Financial Targets"
+        },
+        {
+            "fieldname": "target_monthly_profit",
+            "fieldtype": "Currency",
+            "label": "Target Monthly Profit"
+        },
+        {
+            "fieldname": "min_profit_per_night",
+            "fieldtype": "Currency",
+            "label": "Min Profit Per Night"
+        },
+        {
+            "fieldname": "min_margin_pct",
+            "fieldtype": "Percent",
+            "label": "Min Margin %"
+        },
+        {
+            "fieldname": "section_break_weights",
+            "fieldtype": "Section Break",
+            "label": "Factor Weights"
+        },
+        {
+            "default": "1.2",
+            "fieldname": "w_occupancy",
+            "fieldtype": "Float",
+            "label": "Occupancy Weight"
+        },
+        {
+            "default": "1.2",
+            "fieldname": "w_seasonality",
+            "fieldtype": "Float",
+            "label": "Seasonality Weight"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "w_day_of_week",
+            "fieldtype": "Float",
+            "label": "Day of Week Weight"
+        },
+        {
+            "fieldname": "column_break_weights",
+            "fieldtype": "Column Break"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "w_lead_time",
+            "fieldtype": "Float",
+            "label": "Lead Time Weight"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "w_customer_segment",
+            "fieldtype": "Float",
+            "label": "Customer Segment Weight"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "w_length_of_stay",
+            "fieldtype": "Float",
+            "label": "Length of Stay Weight"
+        },
+        {
+            "default": "1.0",
+            "fieldname": "w_rooms_volume",
+            "fieldtype": "Float",
+            "label": "Rooms Volume Weight"
+        },
+        {
+            "fieldname": "section_break_overbooking",
+            "fieldtype": "Section Break",
+            "label": "Overbooking Defaults"
+        },
+        {
+            "default": "92",
+            "fieldname": "lock_threshold_pct",
+            "fieldtype": "Percent",
+            "label": "Lock Threshold %"
+        },
+        {
+            "default": "5",
+            "fieldname": "safety_buffer_rate",
+            "fieldtype": "Percent",
+            "label": "Safety Buffer Rate %"
+        },
+        {
+            "fieldname": "section_break_room_types",
+            "fieldtype": "Section Break",
+            "label": "Room Type Pricing"
+        },
+        {
+            "fieldname": "room_type_pricing",
+            "fieldtype": "Table",
+            "label": "Room Type Pricing",
+            "options": "Hotel Room Type Pricing"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2026-02-21 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "Hotel Pricing Config",
+    "naming_rule": "Expression",
+    "owner": "Administrator",
+    "permissions": [{"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}],
+    "row_format": "Dynamic",
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": []
+}
