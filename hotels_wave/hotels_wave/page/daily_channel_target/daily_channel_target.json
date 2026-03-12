@@ -1,0 +1,22 @@
+{
+    "content": null,
+    "creation": "2026-03-12 00:00:00",
+    "docstatus": 0,
+    "doctype": "Page",
+    "icon": "fa fa-calendar",
+    "idx": 0,
+    "modified": "2026-03-12 00:00:00",
+    "modified_by": "Administrator",
+    "module": "Hotels Wave",
+    "name": "daily-channel-target",
+    "owner": "Administrator",
+    "page_name": "daily-channel-target",
+    "roles": [
+        {
+            "role": "System Manager"
+        }
+    ],
+    "standard": "Yes",
+    "system_page": 0,
+    "title": "Daily Channel Target"
+}
