@@ -19,7 +19,10 @@
         "season_name_label",
         "section_break_oviu",
         "season_unit_rates",
-        "availability_control"
+        "availability_control",
+        "section_break_no_show",
+        "no_show_rate_weekday",
+        "no_show_rate_weekend"
     ],
     "fields": [
         {
@@ -102,6 +105,23 @@
             "fieldtype": "Table",
             "label": "Availability Control",
             "options": "Availability Control"
+        },
+        {
+            "fieldname": "section_break_no_show",
+            "fieldtype": "Section Break",
+            "label": "No-Show Rate Override"
+        },
+        {
+            "description": "Overrides hotel default for this season (weekday)",
+            "fieldname": "no_show_rate_weekday",
+            "fieldtype": "Percent",
+            "label": "No-Show Rate (Weekday)"
+        },
+        {
+            "description": "Overrides hotel default for this season (weekend)",
+            "fieldname": "no_show_rate_weekend",
+            "fieldtype": "Percent",
+            "label": "No-Show Rate (Weekend)"
         }
     ],
     "index_web_pages_for_search": 1,

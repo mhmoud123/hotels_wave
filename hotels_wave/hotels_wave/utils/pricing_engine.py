@@ -7,16 +7,15 @@ Dynamic Pricing Engine for Hotels Wave.
 Calculates a multi-factor dynamic price given a hotel, unit type, dates,
 channel, pricing plan, customer segment and booking volume.
 
-Formula:
+Formula (matches Excel DailyCalendar):
     composite_factor = product(season, dow, lead_time, los, segment,
                                occ_yield, rooms_volume)
     suggested_price  = base_price × composite_factor × demand_pressure
     final_price      = suggested_price
-        × (1 - channel_commission%)
-        × (1 - channel_discount%)
-        × (1 - plan_discount%)
         × (1 - booking_volume_discount%)
-    → floor applied from cost structure + min_margin_pct (alpha interpolation)
+        × (1 - (plan_discount% + channel_discount%))
+    Note: channel commission is NOT deducted — it's the OTA's cut from hotel
+    revenue, not a reduction in the guest-facing selling price.
 """
 
 import math
@@ -40,6 +39,7 @@ def calculate_dynamic_price(
     customer_segment=None,
     units_in_booking=1,
     booking_date=None,
+    skip_lead_time=False,
 ):
     """
     Return a dict with:
@@ -59,17 +59,16 @@ def calculate_dynamic_price(
         return _empty_result("No base price configured for this unit type.")
 
     # --- Individual factors ---
-    occ_factor = _get_occupancy_factor(hotel, unit_type, check_in)
+    occ_factor = _get_occupancy_factor(hotel, unit_type, check_in, ota_source)
     season_factor = _get_season_factor(hotel, check_in)
     dow_factor = _get_day_of_week_factor(check_in)
-    lt_factor = _get_lead_time_factor(check_in, booking_date)
+    lt_factor = 1.0 if skip_lead_time else _get_lead_time_factor(check_in, booking_date)
     seg_factor = _get_customer_segment_factor(customer_segment)
     los_nights = (check_out - check_in).days or 1
     los_factor = _get_length_of_stay_factor(los_nights)
-    rv_factor = _get_rooms_volume_factor(hotel, unit_type, check_in, units_in_booking)
 
     # --- Composite factor: simple product of all factors (matches Excel) ---
-    factors = [occ_factor, season_factor, dow_factor, lt_factor, seg_factor, los_factor, rv_factor]
+    factors = [occ_factor, season_factor, dow_factor, lt_factor, seg_factor, los_factor]
     composite_factor = math.prod(factors)
 
     # --- Demand pressure factor (scarcity / overbooking uplift) ---
@@ -102,24 +101,22 @@ def calculate_dynamic_price(
             else:
                 plan_discount = (plan.discount_pct or 0) / 100
 
-    # --- Volume discount ---
-    vol_discount = _range_lookup(
+    # --- Volume discount (RoomsDisc in Excel) ---
+    vol_discount_raw = _range_lookup(
         "Booking Volume Discount", "min_rooms", "max_rooms", units_in_booking, value_field="discount_pct"
     )
-    vol_discount = (vol_discount or 0) / 100
+    # _range_lookup returns 1.0 as default (designed for factors); for discounts, default is 0
+    vol_discount = 0.0 if vol_discount_raw == 1.0 else (vol_discount_raw or 0) / 100
 
-    # --- Composite price ---
+    # --- Composite price (matches Excel DailyCalendar) ---
+    # Excel: base × factors × demand × (1 - RoomsDisc) × (1 - (PlanDisc + ChanDisc))
+    # Channel commission is NOT deducted from selling price (it's the OTA's cut from revenue).
     suggested_price = base_price * composite_factor * demand_pressure
     final_price = (
         suggested_price
-        * (1 - channel_commission)
-        * (1 - channel_discount)
-        * (1 - plan_discount)
         * (1 - vol_discount)
+        * (1 - (plan_discount + channel_discount))
     )
-
-    # --- Profit floor (with alpha interpolation) ---
-    final_price = _apply_profit_floor(hotel, unit_type, final_price, los_nights, config)
 
     # --- Overbooking status ---
     from hotels_wave.hotels_wave.utils.overbooking_engine import get_overbooking_status
@@ -134,7 +131,6 @@ def calculate_dynamic_price(
         "lead_time": lt_factor,
         "customer_segment": seg_factor,
         "length_of_stay": los_factor,
-        "rooms_volume": rv_factor,
         "demand_pressure": demand_pressure,
         "channel_commission_pct": channel_commission * 100,
         "channel_discount_pct": channel_discount * 100,
@@ -197,22 +193,34 @@ def _get_base_price(hotel, unit_type, check_in, config):
 # ---------------------------------------------------------------------------
 
 def _range_lookup(doctype, min_field, max_field, value, value_field="factor"):
-    """Generic range lookup — returns the value_field for the matching range row."""
+    """
+    Generic range lookup — returns the value_field for the matching range row.
+    If value exceeds all ranges, returns the factor from the highest range
+    (matches Excel LOOKUP approximate-match behavior).
+    """
     rows = frappe.get_all(
         doctype,
         fields=[min_field, max_field, value_field],
+        order_by=f"{max_field} asc",
     )
+    best = None
     for row in rows:
         if row[min_field] <= value <= row[max_field]:
             return float(row[value_field]) if row[value_field] is not None else 1.0
+        # Track the highest range in case value exceeds all
+        if best is None or row[max_field] > best[max_field]:
+            best = row
+    # Value exceeds all ranges — clamp to the highest range's factor
+    if best and value > best[max_field]:
+        return float(best[value_field]) if best[value_field] is not None else 1.0
     return 1.0
 
 
-def _get_occupancy_factor(hotel, unit_type, check_in):
+def _get_occupancy_factor(hotel, unit_type, check_in, ota_source=None):
     """Look up occupancy yield factor using expected occupied / sellable from overbooking engine."""
     from hotels_wave.hotels_wave.utils.overbooking_engine import get_overbooking_status
 
-    ob = get_overbooking_status(hotel, unit_type, check_in)
+    ob = get_overbooking_status(hotel, unit_type, check_in, ota_source)
     exp_occ_pct = ob.get("exp_occ_for_pricing", 0) * 100
 
     return _range_lookup("Occupancy Yield Factor", "min_occupancy_pct", "max_occupancy_pct", exp_occ_pct)
@@ -282,19 +290,34 @@ def _get_rooms_volume_factor(hotel, unit_type, check_in, units_in_booking):
 
 def _get_demand_pressure_factor(hotel, unit_type, check_in, ota_source, config_name):
     """
-    Tiered price uplift based on overbooking / occupancy pressure.
+    Tiered price uplift matching Excel DailyCalendar formula:
 
-    Looks up the adjusted occupancy percentage in the Demand Pressure Factor
-    DocType (range-based, same pattern as Occupancy Yield Factor).
+        IF Booked > Sellable        → 1.25
+        ELIF ExpOcc >= MinOcc (20%) → 1.15
+        ELIF ExpOcc >= 0.9          → 1.07
+        ELSE                        → 1.0
+
+    ExpOcc = Expected Occupied / Sellable Rooms (not Physical).
+    MinOcc defaults to 20% (Excel InputsControl!B8).
     """
     from hotels_wave.hotels_wave.utils.overbooking_engine import get_overbooking_status
 
     ob = get_overbooking_status(hotel, unit_type, check_in, ota_source)
-    exp_occ = ob.get("adj_occupancy_pct", 0)
+    booked = ob.get("booked_rooms", 0)
+    sellable = ob.get("sellable_rooms", 0)
+    expected = ob.get("expected_occupied", 0)
+    exp_occ = expected / sellable if sellable else 0
 
-    return _range_lookup(
-        "Demand Pressure Factor", "min_occupancy_pct", "max_occupancy_pct", exp_occ
-    )
+    min_occ = 0.2  # Excel default (InputsControl!B8)
+
+    if booked > sellable:
+        return 1.25
+    elif exp_occ >= min_occ:
+        return 1.15
+    elif exp_occ >= 0.9:
+        return 1.07
+    else:
+        return 1.0
 
 
 # ---------------------------------------------------------------------------

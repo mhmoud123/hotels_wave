@@ -10,9 +10,10 @@ for a hotel / unit type over a date range.
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
+
 
 from hotels_wave.hotels_wave.utils.overbooking_engine import get_daily_calendar
+from hotels_wave.hotels_wave.utils.pricing_engine import calculate_dynamic_price, _get_active_season
 
 
 def execute(filters=None):
@@ -26,6 +27,7 @@ def get_columns():
     return [
         {"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
         {"label": _("Day"), "fieldname": "day_of_week", "fieldtype": "Data", "width": 90},
+        {"label": _("Season"), "fieldname": "season_name", "fieldtype": "Data", "width": 150},
         {"label": _("Hotel"), "fieldname": "hotel", "fieldtype": "Link", "options": "Customer", "width": 150},
         {"label": _("Unit Type"), "fieldname": "unit_type", "fieldtype": "Link", "options": "Unit Type", "width": 130},
         {"label": _("Physical Rooms"), "fieldname": "physical_rooms", "fieldtype": "Int", "width": 110},
@@ -34,9 +36,11 @@ def get_columns():
         {"label": _("In-House"), "fieldname": "in_house_arrivals", "fieldtype": "Int", "width": 80},
         {"label": _("Arrivals"), "fieldname": "arrivals", "fieldtype": "Int", "width": 75},
         {"label": _("Expected Occ"), "fieldname": "expected_occupied", "fieldtype": "Float", "width": 100},
-        {"label": _("Max Overbook"), "fieldname": "max_overbook", "fieldtype": "Int", "width": 100},
         {"label": _("Safety Buffer"), "fieldname": "safety_buffer", "fieldtype": "Int", "width": 100},
-        {"label": _("Occ %"), "fieldname": "adj_occupancy_pct", "fieldtype": "Percent", "width": 80},
+        {"label": _("Available"), "fieldname": "available_rooms", "fieldtype": "Int", "width": 90},
+        {"label": _("Occupancy %"), "fieldname": "occupancy_pct", "fieldtype": "Percent", "width": 100},
+        {"label": _("Real Occupancy"), "fieldname": "real_occupancy", "fieldtype": "Percent", "width": 110},
+        {"label": _("Final Price"), "fieldname": "final_price", "fieldtype": "Currency", "width": 110},
         {"label": _("Lock Status"), "fieldname": "lock_status", "fieldtype": "Data", "width": 90},
         {"label": _("Risk Level"), "fieldname": "risk_level", "fieldtype": "Data", "width": 90},
     ]
@@ -74,6 +78,19 @@ def get_data(filters):
         for entry in calendar:
             entry["hotel"] = hotel
             entry["unit_type"] = ut
+            season_doc = _get_active_season(hotel, entry["date"])
+            entry["season_name"] = frappe.db.get_value("Hotel Season", season_doc, "season_name_label") if season_doc else ""
+            # Final Price from the pricing engine (1-night, defaults)
+            pricing = calculate_dynamic_price(
+                hotel=hotel,
+                unit_type=ut,
+                check_in=entry["date"],
+                check_out=frappe.utils.add_days(entry["date"], 1),
+                ota_source=ota_source,
+            )
+            entry["final_price"] = pricing.get("final_price", 0)
+            # Available = Sellable - Booked (can go negative when overbooked)
+            entry["available_rooms"] = entry.get("sellable_rooms", 0) - entry.get("booked_rooms", 0)
             rows.append(entry)
 
     # Sort by date then unit type

@@ -26,7 +26,8 @@
         "column_break_guest",
         "notes",
         "section_break_link",
-        "booking_intake"
+        "booking_intake",
+        "external_id"
     ],
     "fields": [
         {
@@ -83,13 +84,12 @@
             "options": "\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644\n\u0644\u0645 \u064a\u0635\u0644\nNo Show"
         },
         {
-            "default": "\u0627\u0633\u062a\u0642\u0628\u0627\u0644",
             "fieldname": "booking_source",
-            "fieldtype": "Select",
+            "fieldtype": "Link",
             "in_list_view": 1,
             "in_standard_filter": 1,
             "label": "Booking Source",
-            "options": "Booking\nExpedia\n\u0627\u0633\u062a\u0642\u0628\u0627\u0644\n\u0627\u062e\u0631\u0649\n\u0648\u0627\u062a\u0633\u0627\u0628"
+            "options": "OTA Account Setup"
         },
         {
             "default": "\u064a\u0648\u0645\u064a",
@@ -158,6 +158,11 @@
             "fieldtype": "Link",
             "label": "Booking Intake",
             "options": "Booking Intake"
+        },
+        {
+            "fieldname": "external_id",
+            "fieldtype": "Data",
+            "label": "External ID"
         }
     ],
     "index_web_pages_for_search": 1,

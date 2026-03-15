@@ -23,9 +23,6 @@
         "w_customer_segment",
         "w_length_of_stay",
         "w_rooms_volume",
-        "section_break_overbooking",
-        "lock_threshold_pct",
-        "safety_buffer_rate",
         "section_break_room_types",
         "room_type_pricing"
     ],
@@ -123,23 +120,6 @@
             "fieldname": "w_rooms_volume",
             "fieldtype": "Float",
             "label": "Rooms Volume Weight"
-        },
-        {
-            "fieldname": "section_break_overbooking",
-            "fieldtype": "Section Break",
-            "label": "Overbooking Defaults"
-        },
-        {
-            "default": "92",
-            "fieldname": "lock_threshold_pct",
-            "fieldtype": "Percent",
-            "label": "Lock Threshold %"
-        },
-        {
-            "default": "5",
-            "fieldname": "safety_buffer_rate",
-            "fieldtype": "Percent",
-            "label": "Safety Buffer Rate %"
         },
         {
             "fieldname": "section_break_room_types",

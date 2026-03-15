@@ -53,20 +53,10 @@ class BookingIntake(Document):
 		if self.booking_status == "Confirmed":
 			self.on_booking_confirmed()
 
-	def on_update_after_submit(self):
-		"""Handle status changes after submit (booking_status is allow_on_submit)."""
-		previous_doc = self.get_doc_before_save()
-		if not previous_doc:
-			return
-
-		old_status = previous_doc.booking_status
-		new_status = self.booking_status
-
-		if old_status != new_status:
-			if new_status == "Confirmed":
-				self.on_booking_confirmed()
-			elif old_status == "Confirmed" and new_status == "Cancelled":
-				self.on_booking_cancelled()
+	def on_cancel(self):
+		"""Release rooms when a Confirmed booking is cancelled via the Cancel button."""
+		if self.booking_status == "Confirmed":
+			self.on_booking_cancelled()
 
 	def _compute_lead_time(self):
 		"""Set lead_time_days = check_in - booking_date (creation date or today)."""
@@ -196,7 +186,7 @@ class BookingIntake(Document):
 							"Occupancy: {4}%. Sellable: {5}."
 						).format(
 							row.unit_type, ob.get("risk_level"), self.hotel, self.check_in,
-							ob.get("adj_occupancy_pct", 0), ob.get("sellable_rooms", 0),
+							ob.get("occupancy_pct", 0), ob.get("sellable_rooms", 0),
 						),
 						title=_("Overbooking Risk Warning"),
 						indicator="orange",
@@ -250,11 +240,51 @@ class BookingIntake(Document):
 
 	def on_booking_confirmed(self):
 		"""
-		When a booking is confirmed, for each unit type in availability_control:
-		decrement units_allowed_on_platforms (min 0), then increment overbooked.
+		When a booking is confirmed:
+		1. Hard-check that total committed rooms (Booking Intake + Hotel Reservations)
+		   plus this booking do not exceed Sellable Rooms. Throws if exceeded.
+		2. Decrement units_allowed_on_platforms (min 0), then increment overbooked.
 		"""
 		if not self.hotel or not self.get("availability_control"):
 			return
+
+		from hotels_wave.hotels_wave.utils.overbooking_engine import (
+			get_overbooking_status,
+			get_booked_rooms_for_date,
+			get_in_house_and_arrivals,
+			get_arrivals,
+		)
+
+		for row in self.availability_control:
+			if not row.unit_type:
+				continue
+
+			allocated = row.allocated_units or 1
+			ob = get_overbooking_status(self.hotel, row.unit_type, self.check_in)
+			sellable = ob.get("sellable_rooms", 0)
+
+			# Total already committed on this date from both sources
+			booked   = get_booked_rooms_for_date(self.hotel, row.unit_type, self.check_in, exclude_name=self.name)
+			arrivals = get_arrivals(self.hotel, row.unit_type, self.check_in)
+			in_house = get_in_house_and_arrivals(self.hotel, row.unit_type, self.check_in)
+			pending  = max(0, booked - arrivals)
+			total_after = pending + in_house + allocated
+
+			if sellable and total_after > sellable:
+				frappe.throw(
+					_(
+						"Cannot confirm booking for {0} on {1}. "
+						"Total committed rooms would be {2} "
+						"(Pending {3} + In-House {4} + This booking {5}), "
+						"exceeding the sellable limit of {6} "
+						"(Physical {7} + No-Show buffer − Safety Buffer)."
+					).format(
+						row.unit_type, self.check_in,
+						total_after, pending, in_house, allocated, sellable,
+						ob.get("physical_rooms", 0),
+					),
+					title=_("Sellable Rooms Limit Exceeded"),
+				)
 
 		hotel_unit_type = self._get_hotel_unit_type_name()
 		if not hotel_unit_type:
@@ -287,7 +317,7 @@ class BookingIntake(Document):
 		if not self.hotel or not self.get("availability_control"):
 			return
 
-		booking_source = self._get_booking_source_from_ota()
+		booking_source = self.ota_source or ""
 		created = []
 
 		for row in self.availability_control:
@@ -318,19 +348,6 @@ class BookingIntake(Document):
 			)
 		return created
 
-	def _get_booking_source_from_ota(self):
-		"""Map OTA Account Setup name to Hotel Reservation booking_source select value."""
-		if not self.ota_source:
-			return "اخرى"
-		ota_name = frappe.db.get_value("OTA Account Setup", self.ota_source, "ota_name")
-		if not ota_name:
-			return "اخرى"
-		ota_lower = (ota_name or "").lower().strip()
-		if "booking" in ota_lower or "بوكينج" in ota_lower or "بوكنج" in ota_lower:
-			return "Booking"
-		if "expedia" in ota_lower:
-			return "Expedia"
-		return "اخرى"
 
 	def on_booking_cancelled(self):
 		"""
@@ -377,45 +394,46 @@ def create_reservation_from_booking(booking_name):
 
 
 @frappe.whitelist()
-def auto_confirm_bookings():
+def auto_noshow_bookings():
 	"""
-	Scheduled job to automatically confirm bookings that have been
-	in 'Open' status for more than 24 hours.
+	Scheduled job: mark Booking Intakes that have been Open for more than
+	48 hours as 'No Show' and submit them.
 	"""
-	cutoff_time = add_days(now_datetime(), -1)
+	cutoff_time = add_days(now_datetime(), -2)
 
 	open_bookings = frappe.get_all(
 		"Booking Intake",
 		filters={
 			"booking_status": "Open",
+			"docstatus": 0,
 			"creation": ["<", cutoff_time],
 		},
 		pluck="name",
 	)
 
-	confirmed_count = 0
+	no_show_count = 0
 	failed_count = 0
 
 	for booking_name in open_bookings:
 		try:
 			booking = frappe.get_doc("Booking Intake", booking_name)
-			booking.booking_status = "Confirmed"
-			booking.save(ignore_permissions=True)
-			confirmed_count += 1
-		except frappe.ValidationError as e:
-			# Log the error but continue with other bookings
+			booking.booking_status = "No Show"
+			booking.flags.ignore_permissions = True
+			booking.submit()
+			no_show_count += 1
+		except Exception as e:
 			frappe.log_error(
 				message=str(e),
-				title=f"Auto-confirm failed for {booking_name}",
+				title=f"Auto no-show failed for {booking_name}",
 			)
 			failed_count += 1
 
 	frappe.db.commit()
 
-	if confirmed_count > 0 or failed_count > 0:
+	if no_show_count > 0 or failed_count > 0:
 		frappe.logger().info(
-			f"Auto-confirm bookings: {confirmed_count} confirmed, {failed_count} failed"
+			f"Auto no-show bookings: {no_show_count} marked no-show, {failed_count} failed"
 		)
 
-	return {"confirmed": confirmed_count, "failed": failed_count}
+	return {"no_show": no_show_count, "failed": failed_count}
 		

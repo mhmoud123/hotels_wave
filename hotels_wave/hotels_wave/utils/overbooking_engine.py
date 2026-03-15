@@ -4,17 +4,24 @@
 """
 Overbooking Engine for Hotels Wave.
 
-Calculates sellable rooms, adjusted occupancy, lock status, and risk level
-for a given hotel / unit-type / date / channel combination.
+Calculates sellable rooms, occupancy metrics, lock status, and risk level
+for a given hotel / unit-type / date combination.
 
-DailyCalendar Formula (from Excel):
-    Booked              = OTA/advance rooms overlapping the date (from Booking Intake)
-    In-House + Arrivals = all guests physically present (from Hotel Reservation)
-    Arrivals            = OTA-source guests arriving on exactly this date (from Hotel Reservation)
-    Expected Occupied   = InHouse + MAX(0, Booked - Arrivals) × (1 - NoShow%)
-    Sellable            = Physical + MAX_Overbook - SafetyBuffer
-    Adj Occ % (display) = Expected Occupied / Physical Rooms
-    Exp Occ (pricing)   = Expected Occupied / Sellable Rooms
+DailyCalendar Formula:
+    Booked          = OTA/advance rooms arriving on the date (from Booking Intake)
+    In-House        = guests checked in with check_in <= today < check_out (Hotel Reservation)
+    Arrivals        = OTA-source guests arriving exactly today (Hotel Reservation)
+    No-Show Rooms   = Physical Rooms × No-Show Rate %
+    Sellable        = Physical Rooms + No-Show Rooms - Safety Buffer Rooms
+    Expected Occ    = MAX(0, (Booked - Arrivals) × (1 - NoShow%)) + In-House
+    Occupancy %     = Expected Occupied / Physical Rooms
+    Real Occupancy  = In-House / Physical Rooms
+    Exp Occ (pricing) = Expected Occupied / Sellable Rooms
+
+No-Show Rate hierarchy:
+    1. Hotel Season override (if date falls within a season with rate defined)
+    2. Hotel (Customer) default rate
+    3. System default: 5%
 """
 
 import math
@@ -29,13 +36,6 @@ def _excel_round(x):
     return math.floor(x + 0.5)
 
 
-# OTA sources that can no-show (for Arrivals filtering)
-OTA_SOURCES = [
-    "Booking", "Expedia", "booking", "booking.com",
-    "بوكينج", "بوكنج", "بوكينغ", "بوكنغ",
-]
-
-
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -43,9 +43,9 @@ OTA_SOURCES = [
 def get_overbooking_status(hotel, unit_type, check_in, ota_source=None):
     """
     Return a dict with full overbooking/occupancy analysis for a date:
-        physical_rooms, max_overbook, safety_buffer, sellable_rooms,
+        physical_rooms, safety_buffer, sellable_rooms,
         booked_rooms, in_house_arrivals, arrivals, expected_occupied,
-        adj_occupancy_pct, exp_occ_for_pricing, lock_status, risk_level
+        occupancy_pct, real_occupancy, exp_occ_for_pricing, lock_status, risk_level
     """
     check_in = getdate(check_in)
 
@@ -53,21 +53,25 @@ def get_overbooking_status(hotel, unit_type, check_in, ota_source=None):
     if not physical_rooms:
         return _empty_status()
 
-    config = _get_config(hotel)
-    safety_buffer_rate = (config.safety_buffer_rate or 5) / 100 if config else 0.05
-    lock_threshold = (config.lock_threshold_pct or 92) / 100 if config else 0.92
+    hotel_data = frappe.db.get_value(
+        "Customer", hotel,
+        ["custom_safety_buffer_rate", "custom_lock_threshold_pct"],
+        as_dict=True,
+    )
+    safety_buffer_rate = float(hotel_data.custom_safety_buffer_rate or 5) / 100 if hotel_data else 0.05
+    lock_threshold = float(hotel_data.custom_lock_threshold_pct or 92) / 100 if hotel_data else 0.92
 
-    no_show_rate = _get_no_show_rate(ota_source, check_in) / 100
+    no_show_rate = _get_no_show_rate(hotel, check_in) / 100
 
-    max_overbook = _excel_round(physical_rooms * no_show_rate)
+    no_show_rooms = _excel_round(physical_rooms * no_show_rate)
     safety_buffer = max(1, _excel_round(physical_rooms * safety_buffer_rate))
-    sellable = max(1, physical_rooms + max_overbook - safety_buffer)
+    sellable = max(1, physical_rooms + no_show_rooms - safety_buffer)
 
     # Date-based queries
     booked = get_booked_rooms_for_date(hotel, unit_type, check_in)
     in_house = get_in_house_and_arrivals(hotel, unit_type, check_in)
     arrivals = get_arrivals(hotel, unit_type, check_in)
-    expected = get_expected_occupied(hotel, unit_type, check_in, ota_source)
+    expected = get_expected_occupied(hotel, unit_type, check_in)
 
     # If no Hotel Reservation records exist, fall back to static counters
     if not in_house and not arrivals:
@@ -76,30 +80,30 @@ def get_overbooking_status(hotel, unit_type, check_in, ota_source=None):
             expected = static_booked
             booked = static_booked
 
-    # Two occupancy calculations per Excel
-    adj_occ_display = expected / physical_rooms if physical_rooms else 0
+    occupancy_pct = expected / physical_rooms if physical_rooms else 0
+    real_occupancy_pct = in_house / physical_rooms if physical_rooms else 0
     exp_occ_pricing = expected / sellable if sellable else 0
 
-    locked = adj_occ_display >= lock_threshold
+    locked = occupancy_pct >= lock_threshold
     lock_status = "LOCK" if locked else "OPEN"
 
     if locked or expected > sellable:
         risk_level = "HIGH"
-    elif adj_occ_display >= 0.8:
+    elif occupancy_pct >= 0.8:
         risk_level = "MEDIUM"
     else:
         risk_level = "LOW"
 
     return {
         "physical_rooms": physical_rooms,
-        "max_overbook": max_overbook,
         "safety_buffer": safety_buffer,
         "sellable_rooms": sellable,
         "booked_rooms": booked,
         "in_house_arrivals": in_house,
         "arrivals": arrivals,
         "expected_occupied": expected,
-        "adj_occupancy_pct": round(adj_occ_display * 100, 2),
+        "occupancy_pct": round(occupancy_pct * 100, 2),
+        "real_occupancy": round(real_occupancy_pct * 100, 2),
         "exp_occ_for_pricing": round(exp_occ_pricing, 4),
         "lock_status": lock_status,
         "risk_level": risk_level,
@@ -109,7 +113,7 @@ def get_overbooking_status(hotel, unit_type, check_in, ota_source=None):
 def get_daily_calendar(hotel, unit_type, from_date, to_date, ota_source=None):
     """
     Return a list of dicts (one per day) for the overbooking calendar report.
-    Pass ota_source so the correct no-show rate (channel-specific) is applied.
+    ota_source is forwarded for pricing calculations but does not affect no-show rate.
     """
     from_date = getdate(from_date)
     to_date = getdate(to_date)
@@ -158,22 +162,34 @@ def refresh_all_overbooking_statuses():
 # Date-based query functions (DailyCalendar)
 # ---------------------------------------------------------------------------
 
-def get_booked_rooms_for_date(hotel, unit_type, target_date):
+def get_booked_rooms_for_date(hotel, unit_type, target_date, exclude_name=None):
     """
-    Query Booking Intake (confirmed) overlapping target_date.
-    Returns total rooms from OTA/advance bookings.
+    Query Booking Intake (confirmed) where check_in == target_date.
+    Returns total rooms from OTA/advance bookings arriving on that date.
+    Pass exclude_name to exclude a specific Booking Intake document (e.g. the one being confirmed).
     """
     target_date = getdate(target_date)
-    result = frappe.db.sql("""
-        SELECT COALESCE(SUM(ac.allocated_units), 0) as total
-        FROM `tabBooking Intake` bi
-        JOIN `tabAvailability Control` ac ON ac.parent = bi.name
-        WHERE bi.hotel = %s
-          AND ac.unit_type = %s
-          AND bi.booking_status = 'Confirmed'
-          AND bi.check_in <= %s
-          AND bi.check_out > %s
-    """, (hotel, unit_type, target_date, target_date), as_dict=True)
+    if exclude_name:
+        result = frappe.db.sql("""
+            SELECT COALESCE(SUM(ac.allocated_units), 0) as total
+            FROM `tabBooking Intake` bi
+            JOIN `tabAvailability Control` ac ON ac.parent = bi.name
+            WHERE bi.hotel = %s
+              AND ac.unit_type = %s
+              AND bi.booking_status = 'Confirmed'
+              AND bi.check_in = %s
+              AND bi.name != %s
+        """, (hotel, unit_type, target_date, exclude_name), as_dict=True)
+    else:
+        result = frappe.db.sql("""
+            SELECT COALESCE(SUM(ac.allocated_units), 0) as total
+            FROM `tabBooking Intake` bi
+            JOIN `tabAvailability Control` ac ON ac.parent = bi.name
+            WHERE bi.hotel = %s
+              AND ac.unit_type = %s
+              AND bi.booking_status = 'Confirmed'
+              AND bi.check_in = %s
+        """, (hotel, unit_type, target_date), as_dict=True)
     return int(result[0].total) if result else 0
 
 
@@ -198,38 +214,39 @@ def get_in_house_and_arrivals(hotel, unit_type, target_date):
 def get_arrivals(hotel, unit_type, target_date):
     """
     Query Hotel Reservation where check_in == target_date
-    AND booking_source is OTA (Booking, Expedia, etc.)
-    Returns rooms arriving today from OTA sources (can no-show).
+    AND booking_source is set (any OTA source).
+    Returns rooms arriving today that can no-show.
     """
     target_date = getdate(target_date)
-    if not OTA_SOURCES:
-        return 0
-    placeholders = ", ".join(["%s"] * len(OTA_SOURCES))
-    result = frappe.db.sql(f"""
+    result = frappe.db.sql("""
         SELECT COALESCE(SUM(number_of_rooms), 0) as total
         FROM `tabHotel Reservation`
         WHERE hotel = %s
           AND unit_type = %s
           AND status = 'مؤكد'
           AND check_in = %s
-          AND booking_source IN ({placeholders})
-    """, [hotel, unit_type, target_date] + OTA_SOURCES, as_dict=True)
+          AND booking_source IS NOT NULL
+          AND booking_source != ''
+    """, (hotel, unit_type, target_date), as_dict=True)
     return int(result[0].total) if result else 0
 
 
-def get_expected_occupied(hotel, unit_type, target_date, ota_source=None):
+def get_expected_occupied(hotel, unit_type, target_date):
     """
-    The core formula from the Excel DailyCalendar:
+    Expected Occupied = (Booked - Arrivals) - No-Show Rooms + In-House
 
-    Expected Occupied = InHouse + MAX(0, Booked - Arrivals) × (1 - NoShow%)
+    No-Show Rooms = (Booked - Arrivals) × No-Show Rate %  (no rounding — kept as float)
+    i.e. the deduction is from the pending bookings pool, not from physical capacity.
     """
     target_date = getdate(target_date)
     ih = get_in_house_and_arrivals(hotel, unit_type, target_date)
     ar = get_arrivals(hotel, unit_type, target_date)
     bk = get_booked_rooms_for_date(hotel, unit_type, target_date)
-    ns = _get_no_show_rate(ota_source, target_date) / 100
+    ns_rate = _get_no_show_rate(hotel, target_date) / 100
+    pending = max(0, bk - ar)
+    no_show_rooms = pending * ns_rate
 
-    return ih + max(0, bk - ar) * (1 - ns)
+    return max(0, pending - no_show_rooms) + ih
 
 
 # ---------------------------------------------------------------------------
@@ -271,49 +288,69 @@ def _get_room_counts(hotel, unit_type):
     return physical, max(0, booked)
 
 
-def _get_config(hotel):
-    config_name = frappe.db.get_value(
-        "Hotel Pricing Config", {"hotel": hotel, "is_active": 1}, "name"
-    )
-    if not config_name:
-        return None
-    return frappe.get_doc("Hotel Pricing Config", config_name)
+def _get_no_show_rate(hotel, check_in):
+    """
+    Return the applicable no-show rate % for a hotel on a given date.
 
+    Priority:
+      1. Hotel Season override (season covering the date with a rate defined)
+      2. Hotel (Customer) default rate
+      3. System default: 5%
 
-def _get_no_show_rate(ota_source, check_in):
-    """Return the applicable no-show rate % based on weekday/weekend."""
-    if not ota_source:
-        return 5.0  # default 5%
-
-    ota = frappe.db.get_value(
-        "OTA Account Setup",
-        ota_source,
-        ["no_show_rate_weekday", "no_show_rate_weekend"],
-        as_dict=True,
-    )
-    if not ota:
-        return 5.0
-
-    # Weekend = Thursday and Friday in Middle East
-    # Using ISO weekday: Mon=1 ... Sun=7; treat 4 (Thu) and 5 (Fri) as weekend
+    Weekend = Thursday and Friday (Middle East convention).
+    """
+    # ISO weekday: Mon=1 … Sun=7; Thu=4, Fri=5
     is_weekend = getdate(check_in).isoweekday() in (4, 5)
 
-    if is_weekend:
-        return float(ota.no_show_rate_weekend or 5.0)
-    return float(ota.no_show_rate_weekday or 5.0)
+    # 1. Season override
+    season = frappe.db.sql("""
+        SELECT no_show_rate_weekday, no_show_rate_weekend
+        FROM `tabHotel Season`
+        WHERE hotel = %s
+          AND start_date <= %s
+          AND end_date >= %s
+          AND (
+              no_show_rate_weekday IS NOT NULL AND no_show_rate_weekday != 0
+              OR no_show_rate_weekend IS NOT NULL AND no_show_rate_weekend != 0
+          )
+        ORDER BY start_date DESC
+        LIMIT 1
+    """, (hotel, check_in, check_in), as_dict=True)
+
+    if season:
+        s = season[0]
+        rate = (s.no_show_rate_weekend or s.no_show_rate_weekday) if is_weekend \
+               else (s.no_show_rate_weekday or s.no_show_rate_weekend)
+        if rate:
+            return float(rate)
+
+    # 2. Hotel (Customer) default
+    hotel_data = frappe.db.get_value(
+        "Customer", hotel,
+        ["custom_no_show_rate_weekday", "custom_no_show_rate_weekend"],
+        as_dict=True,
+    )
+    if hotel_data:
+        rate = (hotel_data.custom_no_show_rate_weekend or hotel_data.custom_no_show_rate_weekday) if is_weekend \
+               else (hotel_data.custom_no_show_rate_weekday or hotel_data.custom_no_show_rate_weekend)
+        if rate:
+            return float(rate)
+
+    # 3. System default
+    return 5.0
 
 
 def _empty_status():
     return {
         "physical_rooms": 0,
-        "max_overbook": 0,
         "safety_buffer": 0,
         "sellable_rooms": 0,
         "booked_rooms": 0,
         "in_house_arrivals": 0,
         "arrivals": 0,
         "expected_occupied": 0,
-        "adj_occupancy_pct": 0,
+        "occupancy_pct": 0,
+        "real_occupancy": 0,
         "exp_occ_for_pricing": 0,
         "lock_status": "OPEN",
         "risk_level": "LOW",

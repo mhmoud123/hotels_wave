@@ -104,7 +104,7 @@ def get_data(filters):
                 "arrivals": ob.get("arrivals", 0),
                 "expected_occupied": ob.get("expected_occupied", 0),
                 "sellable_rooms": ob.get("sellable_rooms", 0),
-                "occ_pct": ob.get("adj_occupancy_pct", 0),
+                "occ_pct": ob.get("occupancy_pct", 0),
                 # Pricing factors
                 "base_price": result.get("base_price", 0),
                 "f_seasonality": round(fb.get("seasonality", 1.0), 4),

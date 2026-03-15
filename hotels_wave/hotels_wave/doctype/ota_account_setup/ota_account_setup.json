@@ -16,8 +16,8 @@
         "platform_commission",
         "channel_discount_pct",
         "channel_type",
-        "no_show_rate_weekday",
-        "no_show_rate_weekend"
+        "user",
+        "password"
     ],
     "fields": [
         {
@@ -82,14 +82,14 @@
             "options": "OTA\nDirect\nB2B\nWhatsApp"
         },
         {
-            "fieldname": "no_show_rate_weekday",
-            "fieldtype": "Percent",
-            "label": "No-Show Rate (Weekday)"
+            "fieldname": "user",
+            "fieldtype": "Data",
+            "label": "User"
         },
         {
-            "fieldname": "no_show_rate_weekend",
-            "fieldtype": "Percent",
-            "label": "No-Show Rate (Weekend)"
+            "fieldname": "password",
+            "fieldtype": "Password",
+            "label": "Password"
         }
     ],
     "index_web_pages_for_search": 1,

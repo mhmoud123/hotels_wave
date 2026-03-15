@@ -7,7 +7,10 @@
 frappe.ui.form.on("Booking Intake", {
 
     refresh(frm) {
-        frm.trigger("refresh_pricing");
+        // Only show the overbooking indicator on refresh — do NOT re-price.
+        // Pricing fields are already computed by before_save; calling set_value
+        // here would mark the form dirty on every load.
+        _show_overbooking_indicator(frm, null);
 
         // Add "Create Reservation" button for confirmed bookings
         if (frm.doc.docstatus === 1 && frm.doc.booking_status === "Confirmed") {
@@ -184,7 +187,7 @@ function _render_ob_headline(frm, ob) {
     frm.dashboard.set_headline(
         `<span style="color:${color};font-weight:bold;">
             Overbooking Risk: ${risk}${lock} &nbsp;|&nbsp;
-            Occupancy: ${ob.adj_occupancy_pct || 0}% &nbsp;|&nbsp;
+            Occupancy: ${ob.occupancy_pct || 0}% &nbsp;|&nbsp;
             Sellable: ${ob.sellable_rooms || 0} &nbsp;|&nbsp;
             Booked: ${ob.booked_rooms || 0}
         </span>`

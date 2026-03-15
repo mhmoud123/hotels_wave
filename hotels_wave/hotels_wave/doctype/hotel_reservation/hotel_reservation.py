@@ -9,6 +9,26 @@ from frappe.utils import getdate
 
 class HotelReservation(Document):
 
+	def before_save(self):
+		if self.external_id:
+			self._link_and_confirm_booking_intake()
+
+	def _link_and_confirm_booking_intake(self):
+		"""If external_id matches a draft Booking Intake, confirm + submit it."""
+		booking_name = frappe.db.get_value(
+			"Booking Intake",
+			{"external_id": self.external_id, "docstatus": 0},
+			"name",
+		)
+		if not booking_name:
+			return
+		booking = frappe.get_doc("Booking Intake", booking_name)
+		booking.booking_status = "Confirmed"
+		booking.flags.ignore_permissions = True
+		booking.submit()
+		if not self.booking_intake:
+			self.booking_intake = booking_name
+
 	def validate(self):
 		self.validate_dates()
 		self.validate_unit_type()

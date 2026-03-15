@@ -155,7 +155,7 @@ doc_events = {
 
 scheduler_events = {
 	"hourly": [
-		"hotels_wave.hotels_wave.doctype.booking_intake.booking_intake.auto_confirm_bookings"
+		"hotels_wave.hotels_wave.doctype.booking_intake.booking_intake.auto_noshow_bookings"
 	],
 	"daily": [
 		"hotels_wave.hotels_wave.utils.overbooking_engine.refresh_all_overbooking_statuses"
